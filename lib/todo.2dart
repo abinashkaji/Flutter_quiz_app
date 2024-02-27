@@ -1,0 +1,385 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart' as path1;
+
+class Todo {
+  final int id;
+  final String title;
+  final bool completed;
+
+  Todo({required this.id, required this.title, this.completed = false});
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'completed': completed,
+  };
+
+  factory Todo.fromJson(Map<String, dynamic> json) => Todo(
+    id: json['id'] as int,
+    title: json['title'] as String,
+    completed: json['completed'] as bool,
+  );
+
+Todo copyWith({String? title, bool? completed}) {
+  return Todo(
+    id: id,
+    title: title ?? this.title,
+    completed: completed ?? this.completed,
+  );
+ }
+
+}
+
+class DatabaseHelper {
+  DatabaseHelper._privateConstructor();
+
+  static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
+
+  Future<Database> get database async {
+    final path = await  getApplicationDocumentsDirectory();
+    return await openDatabase(
+      path1.join(path1.current,'todos.db'),
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE todos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            completed BOOLEAN NOT NULL
+          )
+        ''');
+      },
+    );
+  }
+
+  Future<List<Todo>> getTodos() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('todos');
+    return List.generate(maps.length, (i) => Todo.fromJson(maps[i]));
+  }
+
+  Future<void> insertTodo(Todo todo) async {
+    final db = await database;
+    await db.insert('todos', todo.toJson());
+  }
+
+  Future<void> updateTodo(Todo todo) async {
+    final db = await database;
+    await db.update('todos', todo.toJson(), where: 'id = ?', whereArgs: [todo.id]);
+  }
+
+  Future<void> deleteTodo(int id) async {
+    final db = await database;
+    await db.delete('todos', where: 'id = ?', whereArgs: [id]);
+  }
+}
+
+class TodoStorage {
+  static const String TODO_KEY = "todos";
+
+  Future<List<Todo>> getTodos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? encodedTodos = prefs.getString(TODO_KEY);
+    if (encodedTodos == null) return [];
+    return List<Todo>.from(jsonDecode(encodedTodos).map((data) => Todo(id: data['id'] as int,
+      title: data['title'] as String,
+      completed: data['completed'] as bool,
+    )));  
+  }
+
+  Future<void> saveTodos(List<Todo> todos) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedTodos = jsonEncode(todos.map((todo) => todo.toJson()).toList());
+    prefs.setString(TODO_KEY, encodedTodos);
+  }
+}
+
+
+class TodoListScreen extends StatefulWidget {
+  @override
+  _TodoListScreenState createState() => _TodoListScreenState();
+}
+
+class _TodoListScreenState extends State<TodoListScreen> {
+  List<Todo> todos = [];
+  //final TodoStorage _todoStorage = TodoStorage();
+  final _todoStorage = DatabaseHelper.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTodos();
+  }
+
+  Future<void> _refreshTodos() async {
+    final todos = await DatabaseHelper.instance.getTodos();
+    setState(() {
+      this.todos = todos;
+    });
+  }
+
+  void _loadTodos() async {
+    todos = await DatabaseHelper.instance.getTodos();
+    setState(() {});
+  }
+
+  // ... add methods for Create, Update, Delete
+
+  void _updateTodo(Todo updatedTodo) {
+  int index = todos.indexWhere((todo) => todo.title == updatedTodo.title);
+  if (index != -1) {
+    todos[index] = updatedTodo;
+//    _todoStorage.saveTodos(todos);
+    setState(() {});
+  }
+}
+
+void _deleteTodo(String title) {
+  int index = todos.indexWhere((todo) => todo.title == title);
+  if (index != -1) {
+    todos.removeAt(index);
+//    _todoStorage.saveTodos(todos);
+    setState(() {});
+  }
+}
+
+void _addTodo() {
+  // Show a dialog to get user input for the new todo title
+  final TextEditingController _titleController = TextEditingController();
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text("Add New Todo"),
+      content: TextField(
+        controller: _titleController,
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text("Cancel"),
+        ),
+        TextButton(
+          onPressed: () {
+            print("hi");
+            final newTitle = _titleController.text;
+            print(newTitle);
+            if (newTitle.isNotEmpty) {
+              print(newTitle);
+              todos.add(Todo(id:1+Random().nextInt(1000), title: newTitle));
+  //            _todoStorage.saveTodos(todos);
+              setState(() {});
+              print("Hello");
+              Navigator.pop(context);
+            }
+          },
+          child: Text("Add"),
+        ),
+      ],
+    ),
+  );
+}
+
+
+  // ... add methods for Create, Update, Delete using DatabaseHelper
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Todos")),
+      body: ListView.builder(
+        itemCount: todos.length,
+        itemBuilder: (context, index) {
+          return TodoItem(todo: todos[index], onUpdate: _updateTodo, onDelete: (p0) {
+            
+          },);
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addTodo,
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class TodoItem extends StatelessWidget {
+  final Todo todo;
+  final Function(Todo) onUpdate;
+  final Function(int) onDelete;
+
+  TodoItem({required this.todo, required this.onUpdate, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(todo.title),
+      trailing: Checkbox(
+        value: todo.completed,
+        onChanged: (value) => onUpdate(todo.copyWith(completed: value!)),
+      ),
+      onLongPress: () => {},
+      );
+  }}
+
+
+
+
+// class Todo {
+//   final String title;
+//   final bool completed;
+//   Todo({required this.title, this.completed = false});
+  
+//  Map<String, dynamic>  toJson() {
+//     return { 'title': title,
+//       'completed': completed}; 
+//   }
+  
+// Todo copyWith({String? title, bool? completed}) {
+//   return Todo(
+//     title: title ?? this.title,
+//     completed: completed ?? this.completed,
+//   );
+// }
+// }
+
+// class TodoStorage {
+//   static const String TODO_KEY = "todos";
+
+//   Future<List<Todo>> getTodos() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final String? encodedTodos = prefs.getString(TODO_KEY);
+//     if (encodedTodos == null) return [];
+//     return List<Todo>.from(jsonDecode(encodedTodos).map((data) => Todo(
+//       title: data['title'] as String,
+//       completed: data['completed'] as bool,
+//     )));  
+//   }
+
+//   Future<void> saveTodos(List<Todo> todos) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final String encodedTodos = jsonEncode(todos.map((todo) => todo.toJson()).toList());
+//     prefs.setString(TODO_KEY, encodedTodos);
+//   }
+// }
+
+// class TodoListScreen extends StatefulWidget {
+//   @override
+//   _TodoListScreenState createState() => _TodoListScreenState();
+// }
+
+// class _TodoListScreenState extends State<TodoListScreen> {
+//   List<Todo> todos = [];
+//   final TodoStorage _todoStorage = TodoStorage();
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadTodos();
+//   }
+
+//   void _loadTodos() async {
+//     todos = await _todoStorage.getTodos();
+//     setState(() {});
+//   }
+
+//   // ... add methods for Create, Update, Delete
+
+//   void _updateTodo(Todo updatedTodo) {
+//   int index = todos.indexWhere((todo) => todo.title == updatedTodo.title);
+//   if (index != -1) {
+//     todos[index] = updatedTodo;
+//     _todoStorage.saveTodos(todos);
+//     setState(() {});
+//   }
+// }
+
+// void _deleteTodo(String title) {
+//   int index = todos.indexWhere((todo) => todo.title == title);
+//   if (index != -1) {
+//     todos.removeAt(index);
+//     _todoStorage.saveTodos(todos);
+//     setState(() {});
+//   }
+// }
+
+// void _addTodo() {
+//   // Show a dialog to get user input for the new todo title
+//   final TextEditingController _titleController = TextEditingController();
+
+//   showDialog(
+//     context: context,
+//     builder: (context) => AlertDialog(
+//       title: Text("Add New Todo"),
+//       content: TextField(
+//         controller: _titleController,
+//         autofocus: true,
+//       ),
+//       actions: [
+//         TextButton(
+//           onPressed: () => Navigator.pop(context),
+//           child: Text("Cancel"),
+//         ),
+//         TextButton(
+//           onPressed: () {
+//             print("hi");
+//             final newTitle = _titleController.text;
+//             print(newTitle);
+//             if (newTitle.isNotEmpty) {
+//               print(newTitle);
+//               todos.add(Todo(title: newTitle));
+//               _todoStorage.saveTodos(todos);
+//               setState(() {});
+//               print("Hello");
+//               Navigator.pop(context);
+//             }
+//           },
+//           child: Text("Add"),
+//         ),
+//       ],
+//     ),
+//   );
+// }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text("Todos")),
+//       body: ListView.builder(
+//         itemCount: todos.length,
+//         itemBuilder: (context, index) {
+//           return TodoItem(todo: todos[index], onUpdate: _updateTodo, onDelete: _deleteTodo);
+//         },
+//       ),
+//       floatingActionButton: FloatingActionButton(
+//         onPressed: _addTodo,
+//         child: Icon(Icons.add),
+//       ),
+//     );
+//   }
+// }
+
+// class TodoItem extends StatelessWidget {
+//   final Todo todo;
+//   final Function(Todo) onUpdate;
+//   final Function(String) onDelete;
+
+//   TodoItem({required this.todo, required this.onUpdate, required this.onDelete});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return ListTile(
+//       title: Text(todo.title),
+//       trailing: Checkbox(
+//         value: todo.completed,
+//         onChanged: (value) => onUpdate(todo.copyWith(completed: value!)),
+//       ),
+//       onLongPress: () => onDelete(todo.title),
+//     );
+//   }
+// }
