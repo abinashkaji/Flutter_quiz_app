@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
+import 'package:security_plus/animation.dart';
 import 'dart:async';
 import 'package:security_plus/flash_question.dart';
 import 'package:security_plus/main.dart';
@@ -16,7 +17,7 @@ class FlashcardApp extends StatefulWidget {
 class _FlashcardAppState extends State<FlashcardApp> {     
   int _numberOfCards=5;
   int _currentIndex = 100+Random().nextInt(20), last_flip=0;
-  bool _showAnswer = false, _auto=true,_next_click=false;
+  bool _showAnswer = false, _auto=false,_next_click=false;
   Timer? _timer;
   int _time_flash=5,time=3;
   int count=0;
@@ -67,12 +68,15 @@ class _FlashcardAppState extends State<FlashcardApp> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Flashcard Autoplay Time'),
+
           content: TextField(
+//            autofocus: true,
+            autofillHints: ["3"],
             keyboardType: TextInputType.number,
             decoration: InputDecoration(labelText: 'Time in seconds (minimum 3)'),
             onChanged: (value) {
               setState(() {
-                time = int.tryParse(value) ?? 3; // Convert input to integer
+                time = int.tryParse(value) ?? 10; // Convert input to integer
               });
             },
           ),
@@ -263,11 +267,14 @@ void showMessage(BuildContext context, String message) {
                                     MainPage(),             
                                   ),
                                   ),
+                                  style: ButtonStyle(backgroundColor: MaterialStateProperty.all(Color.fromARGB(255, 238, 148, 148))),
                                   child: const Text('Yes',style: TextStyle(fontSize: 20)),
                                 ),
                                 SizedBox(width: 10,),
                                 ElevatedButton(
                                   onPressed: () => Navigator.pop(context, false),
+                                 style: ButtonStyle(backgroundColor: MaterialStateProperty.all(Colors.greenAccent)),
+
                                   child: const Text('No',style: TextStyle(fontSize: 20)),
                                 ),
                               ],
@@ -308,14 +315,17 @@ void showMessage(BuildContext context, String message) {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      _showAnswer ? _flashcards[_currentIndex].answer : _flashcards[_currentIndex].question,
-                                      style: const TextStyle(
-                                        fontSize: 30.0,                                
-                                        color: Colors.black,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      selectionColor: Colors.black,
+                                    FlipAnimation(
+                                      showAnswer: _showAnswer,
+                                      question: _flashcards[_currentIndex].question, 
+                                      answer: _flashcards[_currentIndex].answer,
+                                      //Text( _showAnswer ? _flashcards[_currentIndex].answer : _flashcards[_currentIndex].question,
+                                      // style: const TextStyle(
+                                      //   fontSize: 30.0,                                
+                                      //   color: Colors.black,
+                                      // ),
+                                      // textAlign: TextAlign.center,
+                                      // selectionColor: Colors.black,
                                       //background: Colors.black,
                                     ),
                                   ],
@@ -370,7 +380,7 @@ void showMessage(BuildContext context, String message) {
                                 ),                            
 
                              Container(alignment: Alignment.center,
-                              height: 80,width: 80,
+                              height: 60,width: 60,
                               decoration:  BoxDecoration(
                                   border: Border.all(
                                     color: Colors.green, // Border color
@@ -379,7 +389,8 @@ void showMessage(BuildContext context, String message) {
                                   borderRadius: BorderRadius.circular(12), // Border radius
                                 ),
                               child://Checkbox.adaptive(value: _auto, onChanged:(value) => _autoPlay,),
-                                   IconButton(onPressed: _auto? _autoPlay:_getTimeInput, icon: !_auto? Icon(Icons.play_arrow,size: 60,color: Colors.green,):Icon(Icons.pause,size: 60,color: Colors.grey,), ),
+
+                                   IconButton(onPressed: _auto? _autoPlay:_getTimeInput, icon: !_auto? Icon(Icons.play_arrow,size: 40,color: Colors.green,):Icon(Icons.pause,size: 40,color: Colors.grey,), ),
                              ), // _getTimeInput,
                              
                              ],

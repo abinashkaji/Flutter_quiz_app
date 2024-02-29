@@ -196,11 +196,13 @@ void showMessage(BuildContext context, String message) {
                                 MainPage(),             
                               ),
                               ),
-                              child: const Text('Yes',style: TextStyle(fontSize: 20)),
+                              style: ButtonStyle(backgroundColor: MaterialStateProperty.all(Color.fromARGB(255, 238, 148, 148))),
+                              child: Text('Yes',style: TextStyle(fontSize: 20)),
                             ),
                             SizedBox(width: 10,),
                             ElevatedButton(
                               onPressed: () => Navigator.pop(context, false),
+                              style: ButtonStyle(backgroundColor: MaterialStateProperty.all(Colors.greenAccent)),
                               child: const Text('No',style: TextStyle(fontSize: 20)),
                             ),
                           ],
@@ -223,7 +225,8 @@ void showMessage(BuildContext context, String message) {
               children: [
                 Row(mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text('Remaining Questions: ${widget.questions[0]['q']-total} Current Score: ${correct}/${total}' ,textAlign:TextAlign.end,),
+                    Container(decoration:BoxDecoration(color: Colors.black12 ) ,child :Text('Remaining Questions: ${widget.questions[0]['q']-total} Current Score: ${correct}/${total}' ,textAlign:TextAlign.end,
+                    style: TextStyle(color: Colors.white70),)),
                     SizedBox(width: 100,),
                   ],
                 ),
@@ -267,7 +270,7 @@ void showMessage(BuildContext context, String message) {
                                   border: Border.all(color: Colors.grey, width: .5,), 
                                   borderRadius: BorderRadius.circular(6),),
                                   padding:EdgeInsets.fromLTRB(10,1,5,1),                    
-                                  child:Text( 
+                                  child:Text( //CheckboxListTile  //RadioListTile
                                     "${index+1}. ${widget.questions[_currentQuestionIndex]['answers'][index]}",
                                     style: TextStyle(color: Colors.black),
                                   ),
