@@ -11,7 +11,6 @@ class MainOptionWidget extends StatefulWidget {
   @override
   _MainOptionWidgetState createState() => _MainOptionWidgetState();
 }
-
 class _MainOptionWidgetState extends State<MainOptionWidget> {
   int  _sliderValue = 50; //default values
   bool _selectQuestionType = true, _isVisible=false;

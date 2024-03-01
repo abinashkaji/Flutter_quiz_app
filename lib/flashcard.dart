@@ -71,7 +71,7 @@ class _FlashcardAppState extends State<FlashcardApp> {
 
           content: TextField(
 //            autofocus: true,
-            autofillHints: ["3"],
+              
             keyboardType: TextInputType.number,
             decoration: InputDecoration(labelText: 'Time in seconds (minimum 3)'),
             onChanged: (value) {
